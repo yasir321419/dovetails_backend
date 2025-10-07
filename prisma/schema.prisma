@@ -58,8 +58,14 @@ model Otp {
 model User{
   id             String      @id @default(uuid())
   email          String   @unique
-  password       String
-  
+    userType       userType?
+  password       String?
+  firstName       String?
+  lastName       String?
+  phoneNumber    String?
+  userImage      String?
+  deviceToken   String?
+  deviceType   deviceType?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime?           @updatedAt
 

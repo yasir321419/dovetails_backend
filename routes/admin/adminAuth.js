@@ -1,19 +1,14 @@
 const limiter = require("../../middleware/limiter");
 const validateRequest = require("../../middleware/validateRequest");
-
-
+const { adminLoginSchema } = require("../../schema/admin/auth");
 const adminAuthRouter = require("express").Router();
-// const userAuthController = require("../../controllers/user/userAuthController");
-// const { verifyUserToken } = require("../../middleware/auth");
-// const handleMultiPartData = require("../../middleware/handleMultiPartData");
-
-
+const adminAuthController = require("../../controllers/admin/adminAuthController");
 
 adminAuthRouter.post(
-  "/signUp",
-  // limiter,
-  // validateRequest(userRegisterSchema),
-  // userAuthController.signUp
+  "/adminLogin",
+  limiter,
+  validateRequest(adminLoginSchema),
+  adminAuthController.adminLogin
 );
 
 module.exports = adminAuthRouter;
