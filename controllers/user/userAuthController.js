@@ -55,7 +55,7 @@ const userRegister = async (req, res, next) => {
 
 const userVerifyOtp = async (req, res, next) => {
   try {
-    const { email, otp, password } = req.body;
+    const { email, otp, password, deviceToken, deviceType } = req.body;
 
     const findotp = await prisma.otp.findFirst({
       where: {
@@ -89,6 +89,8 @@ const userVerifyOtp = async (req, res, next) => {
           email,
           password: hashedPassword,
           userType: userConstants.USER,
+          deviceToken,
+          deviceType
         }
       });
 

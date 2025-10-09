@@ -29,6 +29,13 @@ enum deviceType {
   IOS
 }
 
+// enum categoryType {
+//   FURNITURE
+//   LIGHTNING
+//   DECOR
+//   FLOORING
+// }
+
 model Admin {
 
   id             String      @id @default(uuid())
@@ -39,6 +46,7 @@ model Admin {
   userType       userType?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime?           @updatedAt
+  categories Category[]
 
 }
 
@@ -70,4 +78,13 @@ model User{
   updatedAt          DateTime?           @updatedAt
 
   
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdBy Admin?   @relation(fields: [adminId], references: [id])
+  adminId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
 }

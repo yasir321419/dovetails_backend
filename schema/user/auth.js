@@ -1,3 +1,4 @@
+const { deviceType } = require("@prisma/client");
 const Joi = require("joi");
 
 const userRegisterSchema = Joi.object({
@@ -21,6 +22,8 @@ const userverifyOtpSchema = Joi.object({
   params: Joi.object({}),
   body: Joi.object({
     email: Joi.string().email().required(),
+    deviceType: Joi.string().valid("ANDROID", "IOS").optional(),
+    deviceToken: Joi.string().optional(),
     password: Joi.string()
       .min(8)
       .max(30)
