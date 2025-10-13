@@ -1,16 +1,16 @@
 const jwt = require("jsonwebtoken");
-const {
-  BadRequestError,
-  UnAuthorizedError,
-  NotFoundError,
-} = require("../handler/CustomError");
+const { BadRequestError, UnAuthorizedError, NotFoundError } = require("../handler/CustomError");
 const prisma = require("../config/prismaConfig");
+const { userConstants } = require("../constants/constants");
 require("dotenv").config();
+
+const getTokenFromHeaders = (req) =>
+  req.headers["x-access-token"] || req.headers["authorization"]?.split(" ")[1];
 
 const verifyUserToken = async (req, res, next) => {
   try {
-    const token = req.headers["x-access-token"] || req.headers["authorization"]?.split(" ")[1];
-    if (!token || token === "" || token === undefined || token === false) {
+    const token = getTokenFromHeaders(req);
+    if (!token) {
       throw new BadRequestError("A token is required for authentication");
     }
     const decode = jwt.verify(token, process.env.SECRET_KEY);
@@ -47,8 +47,8 @@ const verifyUserToken = async (req, res, next) => {
 
 const verifyAdminToken = async (req, res, next) => {
   try {
-    const token = req.headers["x-access-token"] || req.headers["authorization"]?.split(" ")[1];
-    if (!token || token === "" || token === undefined || token === false) {
+    const token = getTokenFromHeaders(req);
+    if (!token) {
       throw new BadRequestError("A token is required for authentication");
     }
     const decode = jwt.verify(token, process.env.SECRET_KEY);
@@ -84,7 +84,7 @@ const verifyAdminToken = async (req, res, next) => {
 };
 
 const optionalAdminAuth = async (req, res, next) => {
-  const token = req.headers["x-access-token"] || req.headers["authorization"]?.split(" ")[1];
+  const token = getTokenFromHeaders(req);
 
   if (token) {
     try {
@@ -120,23 +120,83 @@ const optionalAdminAuth = async (req, res, next) => {
 
 const verifyMultiRoleToken = async (req, res, next) => {
   try {
-    // Try user token
-    await verifyUserToken(req, res, () => { });
-    if (req.user) return next();
+    const token = getTokenFromHeaders(req);
+    if (!token) {
+      throw new BadRequestError("A token is required for authentication");
+    }
 
-    // Try admin token
-    await verifyAdminToken(req, res, () => { });
-    if (req.user) return next();
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    console.log(decoded, "decode");
 
-    // Try barber token
-    await verifyBarberToken(req, res, () => { });
-    if (req.user) return next();
+    const { id, userType } = decoded;
 
-    return res.status(401).json({ message: "Unauthorized. Token invalid for all roles." });
+    if (userType === userConstants.USER) {
+      const user = await prisma.user.findFirst({
+        where: { id, userType },
+      });
+      if (!user) {
+        throw new NotFoundError("User Not Found");
+      }
+      req.user = user;
+      return next();
+    }
+
+    if (userType === userConstants.ADMIN) {
+      const admin = await prisma.admin.findFirst({
+        where: { id, userType },
+      });
+      if (!admin) {
+        throw new NotFoundError("Admin Not Found");
+      }
+      req.user = admin;
+      return next();
+    }
+
+    throw new UnAuthorizedError("Token role not supported");
   } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return next(new UnAuthorizedError("Token has expired"));
+    }
+
+    if (error.name === "JsonWebTokenError") {
+      return next(new UnAuthorizedError("Token is Invalid"));
+    }
     next(error);
   }
 };
 
+const optionalUserAuth = async (req, res, next) => {
+  const token = getTokenFromHeaders(req);
 
-module.exports = { verifyUserToken, verifyAdminToken, optionalAdminAuth, verifyMultiRoleToken };
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.SECRET_KEY);
+      console.log(decoded, "decode");
+
+      const user = await prisma.user.findFirst({
+        where: {
+          id: decoded.id,
+          userType: decoded.userType,
+        },
+      });
+
+      if (user) {
+        req.user = user;
+      }
+    } catch (error) {
+      if (error.name === "TokenExpiredError" || error.name === "JsonWebTokenError") {
+        console.log("Optional token invalid/expired:", error.message);
+      }
+    }
+  }
+
+  next();
+};
+
+module.exports = {
+  verifyUserToken,
+  verifyAdminToken,
+  optionalAdminAuth,
+  optionalUserAuth,
+  verifyMultiRoleToken,
+};
